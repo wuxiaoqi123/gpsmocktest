@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">GpsMockTest</string>
+    <string name="enter_app">进入应用</string>
+    <string name="author">Thank: hilavergil@gmail.com \n For learning purposes only</string>
 </resources>
