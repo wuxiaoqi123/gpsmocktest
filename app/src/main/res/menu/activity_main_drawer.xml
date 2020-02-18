@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_map"
+            android:checked="true"
+            android:icon="@mipmap/ic_map_black_36dp"
+            android:title="@string/map" />
+        <item
+            android:id="@+id/nav_history"
+            android:icon="@mipmap/ic_history_black_36dp"
+            android:title="@string/history" />
+        <item
+            android:id="@+id/nav_localmap"
+            android:icon="@mipmap/ic_local_offer_black_36dp"
+            android:title="@string/offline_map" />
+        <item
+            android:id="@+id/nav_manage"
+            android:icon="@drawable/ic_menu_manage"
+            android:title="@string/setting" />
+        <item
+            android:id="@+id/nav_bug_report"
+            android:icon="@mipmap/ic_bug_report_18pt_3x"
+            android:title="@string/bug_report" />
+    </group>
+
+    <item android:title="@string/communicate">
+
+        <menu>
+            <item
+                android:id="@+id/nav_send"
+                android:icon="@drawable/ic_menu_send"
+                android:title="@string/contact_me" />
+        </menu>
+    </item>
+
+</menu>

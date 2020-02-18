@@ -38,7 +38,8 @@
             android:name="com.baidu.lbsapi.API_KEY"
             android:value="P5aWBufAvSrbhGXoLlLps8PfKpRGIN8A" />
 
-        <activity android:name=".activity.SplashActivity"
+        <activity
+            android:name=".activity.SplashActivity"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -47,7 +48,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".MainActivity" />
+        <activity
+            android:name=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar" />
 
         <service
             android:name="com.baidu.location.f"

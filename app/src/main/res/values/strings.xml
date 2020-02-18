@@ -2,4 +2,15 @@
     <string name="app_name">GpsMockTest</string>
     <string name="enter_app">进入应用</string>
     <string name="author">Thank: hilavergil@gmail.com \n For learning purposes only</string>
+    <string name="nav_header_title">Mock Location</string>
+    <string name="nav_header_subtitle">gpsmocktest</string>
+
+    <string name="map">地图</string>
+    <string name="history">历史记录</string>
+    <string name="offline_map">离线地图</string>
+    <string name="setting">设置</string>
+    <string name="bug_report">问题反馈</string>
+    <string name="communicate">Communicate</string>
+    <string name="contact_me">与我联系</string>
+
 </resources>
