@@ -13,4 +13,10 @@
     <string name="communicate">Communicate</string>
     <string name="contact_me">与我联系</string>
 
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_setting">开发人员选项</string>
+    <string name="manual_input">经纬度定位</string>
+    <string name="resetmap">重置地图</string>
 </resources>
