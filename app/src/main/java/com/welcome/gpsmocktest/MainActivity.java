@@ -14,6 +14,9 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.widget.Toolbar;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import com.baidu.mapapi.NetworkUtil;
+import com.baidu.mapapi.map.BaiduMap;
+import com.baidu.mapapi.map.MapView;
 import com.google.android.material.navigation.NavigationView;
 import com.welcome.gpsmocktest.activity.BaseActivity;
 import com.welcome.gpsmocktest.db.HistoryDBHelper;
@@ -34,6 +37,11 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
     private MockServiceReceiver mockServiceReceiver;
     private boolean isServiceRun = false;
+
+    private MapView mMapView;
+    private BaiduMap mBaiduMap = null;
+    private boolean isNetworkConnected = true;
+    private boolean isGPSOpen = false;
 
     @Override
     protected int getLayoutId() {
@@ -57,6 +65,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         navigationView.setNavigationItemSelectedListener(this);
 
         registerMockReceiver();
+        initBaiduMap();
         initListener();
     }
 
@@ -72,6 +81,19 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         IntentFilter filter = new IntentFilter();
         filter.addAction(MockGpsService.ACTION);
         registerReceiver(mockServiceReceiver, filter);
+    }
+
+    private void initBaiduMap() {
+        if (!NetworkUtil.isNetworkAvailable(this)) {
+            displayToast("网络连接不可用，请检查网络连接设置");
+            isNetworkConnected = false;
+        }
+        if (!(isGPSOpen = isGpsOpened())) {
+            displayToast("GPS定位未开启，请先打开GPS定位服务");
+        }
+
+        mMapView = findViewById(R.id.mapView);
+        mBaiduMap = mMapView.getMap();
     }
 
     private void initListener() {
