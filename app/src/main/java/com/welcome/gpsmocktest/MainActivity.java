@@ -11,12 +11,14 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.RadioGroup;
 import android.widget.SimpleAdapter;
 
 import androidx.annotation.NonNull;
@@ -34,15 +36,19 @@ import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.NetworkUtil;
 import com.baidu.mapapi.map.BaiduMap;
 import com.baidu.mapapi.map.BitmapDescriptor;
+import com.baidu.mapapi.map.BitmapDescriptorFactory;
 import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
+import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.search.poi.PoiSearch;
 import com.baidu.mapapi.search.sug.SuggestionSearch;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.snackbar.Snackbar;
 import com.welcome.gpsmocktest.activity.BaseActivity;
 import com.welcome.gpsmocktest.db.HistoryDBHelper;
 import com.welcome.gpsmocktest.db.SearchDBHelper;
@@ -63,6 +69,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
     private MockServiceReceiver mockServiceReceiver;
     private boolean isServiceRun = false;
+    private boolean isMockServiceStart = false;
 
     private MapView mMapView;
     private BaiduMap mBaiduMap = null;
@@ -96,6 +103,11 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private boolean isSubmit;
     private SuggestionSearch mSuggestionSearch;
 
+    private RadioGroup groupLoc, groupMap;
+    private FloatingActionButton fab, fabStop;
+
+    public static LatLng currentPt = new LatLng(30.547743718042415, 104.07018449827267);
+    public static BitmapDescriptor bdA = BitmapDescriptorFactory.fromResource(R.mipmap.icon_gcoding);
 
     @Override
     protected int getLayoutId() {
@@ -123,6 +135,8 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         mLinearLayout = findViewById(R.id.search_linear);
         historySearchList = findViewById(R.id.search_history_list_view);
         mHistoryLinearLayout = findViewById(R.id.search_history_linear);
+        groupLoc = findViewById(R.id.RadioGroupLocType);
+        groupMap = findViewById(R.id.RadioGroup);
 
         registerMockReceiver();
         initBaiduMap();
@@ -170,10 +184,6 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 showFloatWindowDialog();
             }
         }
-    }
-
-    private void initListener() {
-
     }
 
     private void showGpsDialog() {
@@ -241,6 +251,76 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 })
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    private void initListener() {
+        setFabListener();
+    }
+
+    private void setFabListener() {
+        fab = findViewById(R.id.fab);
+        fabStop = findViewById(R.id.fabStop);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!isGPSOpen) {
+                    showGpsDialog();
+                } else {
+                    if (!(isMockLocOpen = isAllowMockLocation())) {
+                        showOpenMockDialog();
+                    } else {
+                        if (!isMockServiceStart && !isServiceRun) {
+                            Log.d(TAG, "current pt is " + currentPt.longitude + " " + currentPt.latitude);
+                            log.debug("current pt is " + currentPt.longitude + " " + currentPt.latitude);
+                            updateMapState();
+                            startMockService();
+                            updatePositionInfo();
+                            isMockServiceStart = true;
+                            Snackbar.make(v, "位置模拟已开启", Snackbar.LENGTH_LONG)
+                                    .setAction("Action", null).show();
+                            fab.hide();
+                            fabStop.show();
+                            groupLoc.check(R.id.trackloc);
+                        } else {
+                            Snackbar.make(v, "位置模拟已在运行", Snackbar.LENGTH_LONG)
+                                    .setAction("Action", null).show();
+                            fab.hide();
+                            fabStop.show();
+                            isMockServiceStart = true;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void startMockService() {
+        Intent intent = new Intent(this, MockGpsService.class);
+        intent.putExtra("key", currentPt);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+            Log.d(TAG, "startForegroundService: MOCK_GPS");
+            log.debug("startForegroundService: MOCK_GPS");
+        } else {
+            startService(intent);
+            Log.d(TAG, "startService: MOCK_GPS");
+            log.debug("startService: MOCK_GPS");
+        }
+    }
+
+    private void updatePositionInfo() {
+        //TODO
+    }
+
+    private void updateMapState() {
+        Log.d(TAG, "updateMapState");
+        log.debug("updateMapState");
+        if (currentPt != null) {
+            MarkerOptions markerOptions = new MarkerOptions()
+                    .position(currentPt).icon(bdA);
+            mBaiduMap.clear();
+            mBaiduMap.addOverlay(markerOptions);
+        }
     }
 
     public void setTraffic(View view) {
