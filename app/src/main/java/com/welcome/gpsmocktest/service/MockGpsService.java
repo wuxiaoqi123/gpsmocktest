@@ -274,7 +274,7 @@ public class MockGpsService extends Service {
                     .setContentTitle("位置模拟服务已启动")
                     .setContentText("MockLocation service is running")
                     .setSmallIcon(R.mipmap.ic_launcher)
-                    .setOngoing(true)
+                    .setOngoing(true);
             notification = builder.build();
         }
         startForeground(1, notification);
