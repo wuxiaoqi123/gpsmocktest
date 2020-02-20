@@ -292,6 +292,21 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 }
             }
         });
+        fabStop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, MockGpsService.class);
+                stopService(intent);
+                Snackbar.make(v, "位置模拟服务终止", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
+                isMockServiceStart = false;
+                fab.show();
+                fabStop.hide();
+                mLocClient.stop();
+                mLocClient.start();
+                groupLoc.check(R.id.normalloc);
+            }
+        });
     }
 
     private void startMockService() {
