@@ -806,7 +806,8 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         try {
             String searchKey = contentValues.get("SearchKey").toString();
             sqLiteDatabase.delete(tableName, "SearchKey = ?", new String[]{searchKey});
-            sqLiteDatabase.insert(tableName, null, contentValues);
+            long insert = sqLiteDatabase.insert(tableName, null, contentValues);
+            insertRet = insert != -1;
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "DATABASE insert error");
