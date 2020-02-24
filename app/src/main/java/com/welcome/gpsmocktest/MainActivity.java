@@ -668,6 +668,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                     ContentValues contentValues = new ContentValues();
                     contentValues.put("SearchKey", query);
                     contentValues.put("Description", "搜索...");
+                    contentValues.put("IsLocate", 0);
                     contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
                     if (insertHistorySearchTable(searchHistoryDB, SearchDBHelper.TABLE_NAME, contentValues)) {
                         Log.d("DATABASE", "insertHistorySearchTable[SearchHistory] success");
@@ -765,6 +766,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             stopService(new Intent(this, MockGpsService.class));
             isMockServiceStart = false;
         }
+        unregisterReceiver(mockServiceReceiver);
         mLocClient.stop();
         mBaiduMap.setMyLocationEnabled(false);
         mMapView.onDestroy();
@@ -817,6 +819,26 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     // 获取历史搜索
     private List<Map<String, Object>> getSearchHistory() {
         List<Map<String, Object>> data = new ArrayList<>();
+        try {
+            Cursor cursor = searchHistoryDB.query(SearchDBHelper.TABLE_NAME, null,
+                    "ID > ?", new String[]{"0"},
+                    null, null, "TimeStamp DESC", null);
+            Map<String, Object> searchHistoryItem;
+            while (cursor.moveToNext()) {
+//                int id = cursor.getInt(0);
+                searchHistoryItem = new HashMap<>();
+                searchHistoryItem.put("search_key", cursor.getString(1));
+                searchHistoryItem.put("search_description", cursor.getString(2));
+                searchHistoryItem.put("search_timestamp", "" + cursor.getInt(3));
+                searchHistoryItem.put("search_isLoc", "" + cursor.getInt(4));
+                searchHistoryItem.put("search_longitude", "" + cursor.getString(7));
+                searchHistoryItem.put("search_latitude", "" + cursor.getString(8));
+                data.add(searchHistoryItem);
+            }
+            cursor.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return data;
     }
 
