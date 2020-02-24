@@ -1,10 +1,12 @@
 package com.welcome.gpsmocktest;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -14,8 +16,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -46,6 +48,7 @@ import com.baidu.mapapi.map.BitmapDescriptor;
 import com.baidu.mapapi.map.BitmapDescriptorFactory;
 import com.baidu.mapapi.map.MapPoi;
 import com.baidu.mapapi.map.MapStatus;
+import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.MarkerOptions;
@@ -61,8 +64,10 @@ import com.baidu.mapapi.search.poi.PoiDetailSearchResult;
 import com.baidu.mapapi.search.poi.PoiIndoorResult;
 import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
+import com.baidu.mapapi.search.sug.OnGetSuggestionResultListener;
 import com.baidu.mapapi.search.sug.SuggestionResult;
 import com.baidu.mapapi.search.sug.SuggestionSearch;
+import com.baidu.mapapi.search.sug.SuggestionSearchOption;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
@@ -378,6 +383,12 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         initPoiSearchResultListener();
         setSearchRetClickListener();
+        setHistorySearchClickListener();
+        setSugSearchListener();
+        randomFix();
+        LatLng latLng = getLatestLocation(locHistoryDB, HistoryDBHelper.TABLE_NAME);
+        MapStatusUpdate mapStatusUpdate = MapStatusUpdateFactory.newLatLng(latLng);
+        mBaiduMap.setMapStatus(mapStatusUpdate);
     }
 
     private void initPoiSearchResultListener() {
@@ -443,7 +454,68 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     private void setSearchRetClickListener() {
+        //TODO
+    }
 
+    private void setHistorySearchClickListener() {
+        //TODO
+    }
+
+    private void setSugSearchListener() {
+        mSuggestionSearch = SuggestionSearch.newInstance();
+        mSuggestionSearch.setOnGetSuggestionResultListener(new OnGetSuggestionResultListener() {
+            @Override
+            public void onGetSuggestionResult(SuggestionResult suggestionResult) {
+                if (suggestionResult == null || suggestionResult.getAllSuggestions() == null) {
+                    displayToast("没有找到检索结果");
+                } else {
+                    if (isSubmit) {
+                        groupLoc.check(R.id.normalloc);
+                        MyPoiOverlay poiOverlay = new MyPoiOverlay(mBaiduMap);
+                        poiOverlay.setSugData(suggestionResult);
+                        mBaiduMap.setOnMarkerClickListener(poiOverlay);
+                        poiOverlay.addToMap();
+                        poiOverlay.zoomToSpan();
+                        mLinearLayout.setVisibility(View.INVISIBLE);
+                        searchItem.collapseActionView();
+                        isSubmit = false;
+                    } else {
+                        List<Map<String, Object>> data = new ArrayList<>();
+                        int retCount = suggestionResult.getAllSuggestions().size();
+                        SuggestionResult.SuggestionInfo suggestionInfo;
+                        for (int i = 0; i < retCount; i++) {
+                            suggestionInfo = suggestionResult.getAllSuggestions().get(i);
+                            if (suggestionInfo.pt == null) {
+                                continue;
+                            }
+                            Map<String, Object> poiItem = new HashMap<>();
+                            poiItem.put("key_name", suggestionInfo.key);
+                            poiItem.put("key_addr", suggestionInfo.city + " " + suggestionInfo.district);
+                            poiItem.put("key_lng", "" + suggestionInfo.pt.longitude);
+                            poiItem.put("key_lat", "" + suggestionInfo.pt.latitude);
+                            data.add(poiItem);
+                        }
+                        simpleAdapter = new SimpleAdapter(
+                                MainActivity.this,
+                                data,
+                                R.layout.poi_search_item,
+                                new String[]{"key_name", "key_addr", "key_lng", "key_lat"},// 与下面数组元素要一一对应
+                                new int[]{R.id.poi_name, R.id.poi_addr, R.id.poi_longitude, R.id.poi_latitude});
+                        searchList.setAdapter(simpleAdapter);
+                        mLinearLayout.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+        });
+    }
+
+    private void randomFix() {
+        double ra1 = Math.random() * 2.0 - 1.0;
+        double ra2 = Math.random() * 2.0 - 1.0;
+        double randLng = 104.07018449827267 + ra1 / 2000.0;
+        double randLat = 30.547743718042415 + ra2 / 2000.0;
+        currentPt = new LatLng(randLat, randLng);
+        transformCoordinate(currentPt);
     }
 
     private void setFabListener() {
@@ -546,10 +618,89 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(final Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
         searchItem = menu.findItem(R.id.action_search);
         searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
+        searchView.setIconified(false);
+        searchView.onActionViewExpanded();
+        searchView.setIconifiedByDefault(true);
+        searchView.setSubmitButtonEnabled(true);
+        MenuItemCompat.setOnActionExpandListener(searchItem, new MenuItemCompat.OnActionExpandListener() {
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem item) {
+                // 关闭
+                menu.setGroupVisible(0, true);
+                mLinearLayout.setVisibility(View.INVISIBLE);
+                mHistoryLinearLayout.setVisibility(View.INVISIBLE);
+                return true;
+            }
+
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem item) {
+                // 展开
+                menu.setGroupVisible(0, false);
+                mLinearLayout.setVisibility(View.INVISIBLE);
+                List<Map<String, Object>> data = getSearchHistory();
+                if (data.size() > 0) {
+                    simpleAdapter = new SimpleAdapter(
+                            MainActivity.this,
+                            data,
+                            R.layout.history_search_item,
+                            new String[]{"search_key", "search_description", "search_timestamp", "search_isLoc", "search_longitude", "search_latitude"},
+                            new int[]{R.id.search_key, R.id.search_description, R.id.search_timestamp, R.id.search_isLoc, R.id.search_longitude, R.id.search_latitude}
+                    );
+                    historySearchList.setAdapter(simpleAdapter);
+                    mHistoryLinearLayout.setVisibility(View.VISIBLE);
+                }
+                return true;
+            }
+        });
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                try {
+                    isSubmit = true;
+                    mSuggestionSearch.requestSuggestion((new SuggestionSearchOption())
+                            .keyword(query)
+                            .city(mCurrentCity)
+                    );
+                    ContentValues contentValues = new ContentValues();
+                    contentValues.put("SearchKey", query);
+                    contentValues.put("Description", "搜索...");
+                    contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
+                    if (insertHistorySearchTable(searchHistoryDB, SearchDBHelper.TABLE_NAME, contentValues)) {
+                        Log.d("DATABASE", "insertHistorySearchTable[SearchHistory] success");
+                        log.debug("DATABASE: insertHistorySearchTable[SearchHistory] success");
+                    } else {
+                        Log.e("DATABASE", "insertHistorySearchTable[SearchHistory] error");
+                        log.error("DATABASE: insertHistorySearchTable[SearchHistory] error");
+                    }
+                    mBaiduMap.clear();
+                    mLinearLayout.setVisibility(View.INVISIBLE);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    displayToast("搜索失败，请检查网络连接");
+                }
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                mHistoryLinearLayout.setVisibility(View.INVISIBLE);
+                if (!TextUtils.isEmpty(newText)) {
+                    try {
+                        mSuggestionSearch.requestSuggestion(new SuggestionSearchOption()
+                                .keyword(newText)
+                                .city(mCurrentCity));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        displayToast("搜索失败，请检查网络连接");
+                    }
+                }
+                return true;
+            }
+        });
         return true;
     }
 
@@ -625,6 +776,48 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         searchHistoryDB.close();
         searchHistoryDB = null;
         super.onDestroy();
+    }
+
+    private LatLng getLatestLocation(SQLiteDatabase sqLiteDatabase, String tableName) {
+        try {
+            Cursor cursor = sqLiteDatabase.query(tableName, null,
+                    "ID > ?", new String[]{"0"},
+                    null, null, "TimeStamp DESC", "1");
+            if (cursor.getCount() == 0) {
+                randomFix();
+                return MainActivity.currentPt;
+            } else {
+                cursor.moveToNext();
+                String BD09Longitude = cursor.getString(5);
+                String BD09Latitude = cursor.getString(6);
+                cursor.close();
+                return new LatLng(Double.valueOf(BD09Latitude), Double.valueOf(BD09Longitude));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return MainActivity.currentPt;
+    }
+
+    private boolean insertHistorySearchTable(SQLiteDatabase sqLiteDatabase, String tableName, ContentValues contentValues) {
+        boolean insertRet = true;
+        try {
+            String searchKey = contentValues.get("SearchKey").toString();
+            sqLiteDatabase.delete(tableName, "SearchKey = ?", new String[]{searchKey});
+            sqLiteDatabase.insert(tableName, null, contentValues);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(TAG, "DATABASE insert error");
+            log.error(TAG + " DATABASE insert error");
+            insertRet = false;
+        }
+        return insertRet;
+    }
+
+    // 获取历史搜索
+    private List<Map<String, Object>> getSearchHistory() {
+        List<Map<String, Object>> data = new ArrayList<>();
+        return data;
     }
 
     public class MockServiceReceiver extends BroadcastReceiver {
