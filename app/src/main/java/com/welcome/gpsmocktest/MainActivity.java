@@ -6,14 +6,19 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.sqlite.SQLiteDatabase;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
@@ -27,6 +32,8 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.core.view.MenuItemCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.baidu.location.BDLocation;
@@ -37,6 +44,7 @@ import com.baidu.mapapi.NetworkUtil;
 import com.baidu.mapapi.map.BaiduMap;
 import com.baidu.mapapi.map.BitmapDescriptor;
 import com.baidu.mapapi.map.BitmapDescriptorFactory;
+import com.baidu.mapapi.map.MapPoi;
 import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
@@ -44,7 +52,16 @@ import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.search.core.PoiInfo;
+import com.baidu.mapapi.search.core.SearchResult;
+import com.baidu.mapapi.search.poi.OnGetPoiSearchResultListener;
+import com.baidu.mapapi.search.poi.PoiDetailResult;
+import com.baidu.mapapi.search.poi.PoiDetailSearchOption;
+import com.baidu.mapapi.search.poi.PoiDetailSearchResult;
+import com.baidu.mapapi.search.poi.PoiIndoorResult;
+import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
+import com.baidu.mapapi.search.sug.SuggestionResult;
 import com.baidu.mapapi.search.sug.SuggestionSearch;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
@@ -53,11 +70,17 @@ import com.welcome.gpsmocktest.activity.BaseActivity;
 import com.welcome.gpsmocktest.db.HistoryDBHelper;
 import com.welcome.gpsmocktest.db.SearchDBHelper;
 import com.welcome.gpsmocktest.log4j.LogUtil;
+import com.welcome.gpsmocktest.map.PoiOverlay;
 import com.welcome.gpsmocktest.service.MockGpsService;
 
 import org.apache.log4j.Logger;
 
-public class MainActivity extends BaseActivity implements NavigationView.OnNavigationItemSelectedListener {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class MainActivity extends BaseActivity implements NavigationView.OnNavigationItemSelectedListener, SensorEventListener {
 
     private static final int ACTION_LOCATION_SOURCE_SETTINGS_CODE = 1;
     private static Logger log = Logger.getLogger(MainActivity.class);
@@ -92,6 +115,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private String mCurrentAddr;
     private MyLocationData locData;
 
+    private DrawerLayout drawerLayout;
     private PoiSearch poiSearch;
     private SearchView searchView;
     private ListView searchList;
@@ -123,7 +147,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         setSupportActionBar(toolbar);
         initDB();
 
-        DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+        drawerLayout = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this,
                 drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawerLayout.addDrawerListener(toggle);
@@ -168,13 +192,71 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         mMapView = findViewById(R.id.mapView);
         mBaiduMap = mMapView.getMap();
+        mBaiduMap.setOnMapTouchListener(new BaiduMap.OnMapTouchListener() {
+            @Override
+            public void onTouch(MotionEvent motionEvent) {
+
+            }
+        });
+        mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                currentPt = latLng;
+                transformCoordinate(currentPt);
+                updateMapState();
+            }
+
+            @Override
+            public boolean onMapPoiClick(MapPoi mapPoi) {
+                currentPt = mapPoi.getPosition();
+                transformCoordinate(currentPt);
+                updateMapState();
+                return false;
+            }
+        });
+        mBaiduMap.setOnMapLongClickListener(new BaiduMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+                currentPt = latLng;
+                transformCoordinate(currentPt);
+                updateMapState();
+            }
+        });
+        mBaiduMap.setOnMapDoubleClickListener(new BaiduMap.OnMapDoubleClickListener() {
+            @Override
+            public void onMapDoubleClick(LatLng latLng) {
+                currentPt = latLng;
+                transformCoordinate(currentPt);
+                updateMapState();
+            }
+        });
+        mBaiduMap.setOnMapStatusChangeListener(new BaiduMap.OnMapStatusChangeListener() {
+            @Override
+            public void onMapStatusChangeStart(MapStatus mapStatus) {
+
+            }
+
+            @Override
+            public void onMapStatusChangeStart(MapStatus mapStatus, int i) {
+
+            }
+
+            @Override
+            public void onMapStatusChange(MapStatus mapStatus) {
+
+            }
+
+            @Override
+            public void onMapStatusChangeFinish(MapStatus mapStatus) {
+
+            }
+        });
         mBaiduMap.setMyLocationEnabled(true);
         if (!isGPSOpen) {
             showGpsDialog();
         } else {
             openLocateLayer();
         }
-        poiSearch = PoiSearch.newInstance();
         isMockLocOpen = isAllowMockLocation();
         if (!isMockLocOpen) {
             showOpenMockDialog();
@@ -184,6 +266,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 showFloatWindowDialog();
             }
         }
+    }
+
+    private void transformCoordinate(LatLng currentPt) {
+        //TODO
     }
 
     private void showGpsDialog() {
@@ -255,6 +341,109 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
     private void initListener() {
         setFabListener();
+        groupLoc.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (checkedId == R.id.normalloc) {
+                    mCurrentMode = MyLocationConfiguration.LocationMode.NORMAL;
+                    mBaiduMap.setMyLocationConfiguration(new MyLocationConfiguration(mCurrentMode,
+                            true, mCurrentMarker));
+                    MapStatus.Builder builder1 = new MapStatus.Builder();
+                    builder1.overlook(0);
+                    mBaiduMap.animateMapStatus(MapStatusUpdateFactory.newMapStatus(builder1.build()));
+                } else if (checkedId == R.id.trackloc) {
+                    mCurrentMode = MyLocationConfiguration.LocationMode.FOLLOWING;
+                    mBaiduMap.setMyLocationConfiguration(new MyLocationConfiguration(mCurrentMode,
+                            true, mCurrentMarker));
+                    MapStatus.Builder builder = new MapStatus.Builder();
+                    builder.overlook(0);
+                    mBaiduMap.animateMapStatus(MapStatusUpdateFactory.newMapStatus(builder.build()));
+                } else if (checkedId == R.id.compassloc) {
+                    mCurrentMode = MyLocationConfiguration.LocationMode.COMPASS;
+                    mBaiduMap.setMyLocationConfiguration(new MyLocationConfiguration(mCurrentMode,
+                            true, mCurrentMarker));
+                }
+            }
+        });
+        groupMap.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (checkedId == R.id.normal) {
+                    mBaiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
+                } else if (checkedId == R.id.statellite) {
+                    mBaiduMap.setMapType(BaiduMap.MAP_TYPE_SATELLITE);
+                }
+            }
+        });
+
+        initPoiSearchResultListener();
+        setSearchRetClickListener();
+    }
+
+    private void initPoiSearchResultListener() {
+        poiSearch = PoiSearch.newInstance();
+        poiSearch.setOnGetPoiSearchResultListener(new OnGetPoiSearchResultListener() {
+            @Override
+            public void onGetPoiResult(PoiResult poiResult) {
+                if (poiResult == null || poiResult.error == SearchResult.ERRORNO.RESULT_NOT_FOUND) {
+                    displayToast("没有找到检索结果");
+                    return;
+                }
+                if (poiResult.error == SearchResult.ERRORNO.NO_ERROR) {
+                    if (isSubmit) {
+                        MyPoiOverlay poiOverlay = new MyPoiOverlay(mBaiduMap);
+                        poiOverlay.setData(poiResult);
+                        mBaiduMap.setOnMarkerClickListener(poiOverlay);
+                        poiOverlay.addToMap();
+                        poiOverlay.zoomToSpan();
+                        mLinearLayout.setVisibility(View.INVISIBLE);
+                        searchItem.collapseActionView();
+                        isSubmit = false;
+                    } else {
+                        List<Map<String, Object>> data = new ArrayList<>();
+                        int retCnt = poiResult.getAllPoi().size();
+                        PoiInfo poiInfo;
+                        for (int i = 0; i < retCnt; i++) {
+                            poiInfo = poiResult.getAllPoi().get(i);
+                            Map<String, Object> testitem = new HashMap<>();
+                            testitem.put("key_name", poiInfo.name);
+                            testitem.put("key_addr", poiInfo.address);
+                            testitem.put("key_lng", poiInfo.location.longitude);
+                            testitem.put("key_lat", poiInfo.location.latitude);
+                            data.add(testitem);
+                        }
+                        simpleAdapter = new SimpleAdapter(
+                                MainActivity.this,
+                                data,
+                                R.layout.poi_search_item,
+                                new String[]{"key_name", "key_addr", "key_lng", "key_lat"},
+                                new int[]{R.id.poi_name, R.id.poi_addr, R.id.poi_longitude, R.id.poi_latitude}
+                        );
+                        searchList.setAdapter(simpleAdapter);
+                        mLinearLayout.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+
+            @Override
+            public void onGetPoiDetailResult(PoiDetailResult poiDetailResult) {
+                displayToast(poiDetailResult.name);
+            }
+
+            @Override
+            public void onGetPoiDetailResult(PoiDetailSearchResult poiDetailSearchResult) {
+
+            }
+
+            @Override
+            public void onGetPoiIndoorResult(PoiIndoorResult poiIndoorResult) {
+
+            }
+        });
+    }
+
+    private void setSearchRetClickListener() {
+
     }
 
     private void setFabListener() {
@@ -359,12 +548,83 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
+        searchItem = menu.findItem(R.id.action_search);
+        searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
         return true;
     }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         return false;
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        mMapView.onResume();
+        super.onResume();
+        mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION),
+                SensorManager.SENSOR_DELAY_UI);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        double x = event.values[SensorManager.DATA_X];
+        if (Math.abs(x - lastX) > 1.0) {
+            mCurrentDirection = (int) x;
+            locData = new MyLocationData.Builder()
+                    .accuracy(mCurrentAccracy)
+                    .direction(mCurrentDirection)
+                    .latitude(mCurrentLat)
+                    .longitude(mCurrentLon)
+                    .build();
+            mBaiduMap.setMyLocationData(locData);
+        }
+        lastX = x;
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+    }
+
+    @Override
+    protected void onPause() {
+        mMapView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        mSensorManager.unregisterListener(this);
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (isMockServiceStart) {
+            stopService(new Intent(this, MockGpsService.class));
+            isMockServiceStart = false;
+        }
+        mLocClient.stop();
+        mBaiduMap.setMyLocationEnabled(false);
+        mMapView.onDestroy();
+        mMapView = null;
+        poiSearch.destroy();
+        mSuggestionSearch.destroy();
+        locHistoryDB.close();
+        locHistoryDB = null;
+        searchHistoryDB.close();
+        searchHistoryDB = null;
+        super.onDestroy();
     }
 
     public class MockServiceReceiver extends BroadcastReceiver {
@@ -411,6 +671,34 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 builder.target(ll).zoom(18.0f);
                 mBaiduMap.animateMapStatus(MapStatusUpdateFactory.newMapStatus(builder.build()));
             }
+        }
+    }
+
+    public class MyPoiOverlay extends PoiOverlay {
+
+        public MyPoiOverlay(BaiduMap map) {
+            super(map);
+        }
+
+        @Override
+        public boolean onPoiClick(int i) {
+            PoiResult poiResult = getPoiResult();
+            if (poiResult != null && poiResult.getAllPoi() != null) {
+                PoiInfo poiInfo = poiResult.getAllPoi().get(i);
+                currentPt = poiInfo.location;
+                transformCoordinate(currentPt);
+                poiSearch.searchPoiDetail(new PoiDetailSearchOption()
+                        .poiUid(poiInfo.uid));
+            }
+            SuggestionResult suggestionResult = getSugResult();
+            if (suggestionResult != null && suggestionResult.getAllSuggestions() != null) {
+                SuggestionResult.SuggestionInfo suggestionInfo = suggestionResult.getAllSuggestions().get(i);
+                currentPt = suggestionInfo.pt;
+                transformCoordinate(currentPt);
+                poiSearch.searchPoiDetail(new PoiDetailSearchOption()
+                        .poiUid(suggestionInfo.uid));
+            }
+            return true;
         }
     }
 }
