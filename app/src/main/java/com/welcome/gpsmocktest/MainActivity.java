@@ -15,6 +15,7 @@ import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
@@ -23,12 +24,14 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.SimpleAdapter;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -450,7 +453,25 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     private void setSearchRetClickListener() {
-        //TODO
+        searchList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String lat = ((TextView) view.findViewById(R.id.poi_latitude)).getText().toString();
+                String lng = ((TextView) view.findViewById(R.id.poi_longitude)).getText().toString();
+                currentPt = new LatLng(Double.valueOf(lat), Double.valueOf(lng));
+                MapStatusUpdate mapStatusUpdate = MapStatusUpdateFactory.newLatLng(currentPt);
+                mBaiduMap.setMapStatus(mapStatusUpdate);
+                updateMapState();
+                transformCoordinate(currentPt);
+
+                //TODO
+                ContentValues contentValues = new ContentValues();
+
+
+                mLinearLayout.setVisibility(View.INVISIBLE);
+                searchItem.collapseActionView();
+            }
+        });
     }
 
     private void setHistorySearchClickListener() {
@@ -775,8 +796,37 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        return false;
+    public boolean onNavigationItemSelected(@NonNull final MenuItem item) {
+        drawerLayout.closeDrawer(GravityCompat.START);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                switch (item.getItemId()) {
+                    case R.id.nav_map:
+                        break;
+                    case R.id.nav_history:
+                        break;
+                    case R.id.nav_localmap:
+                        break;
+                    case R.id.nav_manage:
+                        startActivity(new Intent(Settings.ACTION_SETTINGS));
+                        break;
+                    case R.id.nav_bug_report:
+                        break;
+                    case R.id.nav_send:
+                        Intent i = new Intent(Intent.ACTION_SEND);
+                        // i.setType("text/plain");
+                        i.setType("message/rfc822");
+                        i.putExtra(Intent.EXTRA_EMAIL, new String[]{"hilavergil@gmail.com"});
+                        i.putExtra(Intent.EXTRA_SUBJECT, "SUGGESTION");
+                        startActivity(Intent.createChooser(i, "Select email application."));
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }, 100);
+        return true;
     }
 
     @Override
