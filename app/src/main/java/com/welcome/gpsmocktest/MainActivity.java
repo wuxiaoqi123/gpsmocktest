@@ -18,11 +18,13 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RadioGroup;
@@ -311,13 +313,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 .setPositiveButton("设置", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        try {
-                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS);
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            displayToast("无法跳转到开发者选项,请先确保您的设备已处于开发者模式");
-                        }
+                        startDevlopmentSetting();
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -703,6 +699,79 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             }
         });
         return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        switch (id) {
+            case R.id.action_setting:
+                startDevlopmentSetting();
+                break;
+            case R.id.action_resetMap:
+                resetMap();
+                break;
+            case R.id.action_input:
+                showLatlngDialog();
+                break;
+            default:
+                break;
+
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void startDevlopmentSetting() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS);
+            startActivity(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
+            displayToast("无法跳转到开发者选项,请先确保您的设备已处于开发者模式");
+        }
+    }
+
+    private void resetMap() {
+        mBaiduMap.clear();
+        MapStatusUpdate mapStatusUpdate = MapStatusUpdateFactory.newLatLng(new LatLng(mCurrentLat, mCurrentLon));
+        mBaiduMap.setMapStatus(mapStatusUpdate);
+        currentPt = new LatLng(mCurrentLat, mCurrentLon);
+        transformCoordinate(currentPt);
+    }
+
+    private void showLatlngDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("输入经度和纬度(BD09坐标系)");
+        View view = LayoutInflater.from(this).inflate(R.layout.latlng_dialog, null);
+        builder.setView(view);
+        final EditText dialog_lng = view.findViewById(R.id.dialog_longitude);
+        final EditText dialog_lat = view.findViewById(R.id.dialog_latitude);
+        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String dialog_lng_str, dialog_lat_str;
+                try {
+                    dialog_lng_str = dialog_lng.getText().toString().trim();
+                    dialog_lat_str = dialog_lat.getText().toString().trim();
+                    double dialog_lng_double = Double.valueOf(dialog_lng_str);
+                    double dialog_lat_double = Double.valueOf(dialog_lat_str);
+                    if (dialog_lng_double > 180.0 || dialog_lng_double < -180.0 || dialog_lat_double > 90.0 || dialog_lat_double < -90.0) {
+                        displayToast("经纬度超出限制!\n-180.0<经度<180.0\n-90.0<纬度<90.0");
+                    } else {
+                        currentPt = new LatLng(dialog_lat_double, dialog_lng_double);
+                        MapStatusUpdate mapStatusUpdate = MapStatusUpdateFactory.newLatLng(currentPt);
+                        mBaiduMap.setMapStatus(mapStatusUpdate);
+                        updateMapState();
+                        transformCoordinate(currentPt);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    displayToast("获取经纬度出错,请检查输入是否正确");
+                }
+            }
+        });
+        builder.setNegativeButton("取消", null);
+        builder.show();
     }
 
     @Override
