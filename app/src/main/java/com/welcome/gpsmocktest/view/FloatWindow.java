@@ -11,7 +11,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 
-import com.welcome.gpsmocktest.MainActivity;
+import com.welcome.gpsmocktest.activity.MainActivity;
 import com.welcome.gpsmocktest.R;
 
 import java.lang.reflect.Field;

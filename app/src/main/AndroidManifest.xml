@@ -49,8 +49,12 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".activity.MainActivity"
             android:theme="@style/AppTheme.NoActionBar" />
+
+        <activity android:name=".activity.HistoryActivity" />
+
+        <activity android:name=".activity.OfflineMapActivity" />
 
         <service
             android:name="com.baidu.location.f"

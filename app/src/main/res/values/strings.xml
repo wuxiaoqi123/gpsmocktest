@@ -19,4 +19,7 @@
     <string name="action_setting">开发人员选项</string>
     <string name="manual_input">经纬度定位</string>
     <string name="resetmap">重置地图</string>
+
+    <string name="norecord">无历史纪录</string>
+
 </resources>

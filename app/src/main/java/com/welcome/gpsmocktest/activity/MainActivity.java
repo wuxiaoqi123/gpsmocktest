@@ -1,4 +1,4 @@
-package com.welcome.gpsmocktest;
+package com.welcome.gpsmocktest.activity;
 
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -76,7 +76,7 @@ import com.baidu.mapapi.search.sug.SuggestionSearchOption;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
-import com.welcome.gpsmocktest.activity.BaseActivity;
+import com.welcome.gpsmocktest.R;
 import com.welcome.gpsmocktest.db.HistoryDBHelper;
 import com.welcome.gpsmocktest.db.SearchDBHelper;
 import com.welcome.gpsmocktest.log4j.LogUtil;
@@ -175,6 +175,21 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         registerMockReceiver();
         initBaiduMap();
         initListener();
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!isGpsOpened() && !isFinishing()) {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                isGPSOpen = true;
+                openLocateLayer();
+            }
+        }).start();
     }
 
     private void initDB() {
@@ -805,8 +820,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                     case R.id.nav_map:
                         break;
                     case R.id.nav_history:
+                        HistoryActivity.start(MainActivity.this);
                         break;
                     case R.id.nav_localmap:
+                        OfflineMapActivity.start(MainActivity.this);
                         break;
                     case R.id.nav_manage:
                         startActivity(new Intent(Settings.ACTION_SETTINGS));

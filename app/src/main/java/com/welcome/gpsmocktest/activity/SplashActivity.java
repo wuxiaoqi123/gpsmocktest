@@ -9,7 +9,6 @@ import android.widget.Button;
 
 import androidx.annotation.NonNull;
 
-import com.welcome.gpsmocktest.MainActivity;
 import com.welcome.gpsmocktest.R;
 
 import java.util.ArrayList;
