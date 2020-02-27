@@ -105,7 +105,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private boolean isMockServiceStart = false;
 
     private MapView mMapView;
-    private BaiduMap mBaiduMap = null;
+    public static BaiduMap mBaiduMap = null;
     private boolean isNetworkConnected = true;
     private boolean isGPSOpen = false;
     private boolean isFirstLoc = true;
@@ -141,6 +141,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private FloatingActionButton fab, fabStop;
 
     public static LatLng currentPt = new LatLng(30.547743718042415, 104.07018449827267);
+    public static String latLngInfo = "104.06121778639009&30.544111926165282";
     public static BitmapDescriptor bdA = BitmapDescriptorFactory.fromResource(R.mipmap.icon_gcoding);
 
     @Override
