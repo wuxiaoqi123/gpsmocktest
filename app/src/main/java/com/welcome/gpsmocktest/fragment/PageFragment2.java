@@ -2,6 +2,10 @@ package com.welcome.gpsmocktest.fragment;
 
 import android.os.Bundle;
 
+import com.baidu.mapapi.map.offline.MKOLUpdateElement;
+
+import java.util.ArrayList;
+
 public class PageFragment2 extends BaseFragment {
 
     private static final String ARG_PAGE = "ARG_PAGE";
@@ -13,4 +17,6 @@ public class PageFragment2 extends BaseFragment {
         pageFragment2.setArguments(bundle);
         return pageFragment2;
     }
+
+    public static ArrayList<MKOLUpdateElement> localMapList = null;
 }
