@@ -46,7 +46,7 @@ public class MockGpsService extends Service {
 
     private boolean isStop = true;
 
-    private LatLng latLngInfo = new LatLng(30.547743718042415, 104.07018449827267);
+    private String latLngInfo = "104.06121778639009&30.544111926165282";
 
     private FloatWindow floatWindow;
     private boolean isFloatWindowStart = false;
@@ -206,8 +206,10 @@ public class MockGpsService extends Service {
         Log.d(TAG, "setNetworkLocation: " + latLngInfo.toString());
         log.debug(TAG + ": setNetworkLocation: " + latLngInfo.toString());
         String providerStr = LocationManager.NETWORK_PROVIDER;
+        String latLngStr[] = latLngInfo.split("&");
+        LatLng latLng = new LatLng(Double.valueOf(latLngStr[1]), Double.valueOf(latLngStr[0]));
         try {
-            locationManager.setTestProviderLocation(providerStr, generateLocation(latLngInfo));
+            locationManager.setTestProviderLocation(providerStr, generateLocation(latLng));
         } catch (Exception e) {
             e.printStackTrace();
             Log.d(TAG, "setNetworkLocation error");
@@ -218,8 +220,10 @@ public class MockGpsService extends Service {
     private void setGPSLocation() {
         Log.d(TAG, "setGPSLocation: " + latLngInfo.toString());
         log.debug(TAG + ": setGPSLocation: " + latLngInfo.toString());
+        String latLngStr[] = latLngInfo.split("&");
+        LatLng latLng = new LatLng(Double.valueOf(latLngStr[1]), Double.valueOf(latLngStr[0]));
         try {
-            locationManager.setTestProviderLocation(LocationManager.GPS_PROVIDER, generateLocation(latLngInfo));
+            locationManager.setTestProviderLocation(LocationManager.GPS_PROVIDER, generateLocation(latLng));
         } catch (Exception e) {
             e.printStackTrace();
             Log.d(TAG, "setGPSLocation error");
@@ -279,7 +283,7 @@ public class MockGpsService extends Service {
         }
         startForeground(1, notification);
 
-        latLngInfo = intent.getParcelableExtra("key");
+        latLngInfo = intent.getStringExtra("key");
         if (latLngInfo != null) {
             Log.d(TAG, "DataFromMain is " + latLngInfo.toString());
             log.debug(TAG + ": DataFromMain is " + latLngInfo.toString());

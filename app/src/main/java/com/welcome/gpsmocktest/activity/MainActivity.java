@@ -480,10 +480,25 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                 updateMapState();
                 transformCoordinate(currentPt);
 
-                //TODO
+                //搜索历史 插表参数
                 ContentValues contentValues = new ContentValues();
+                contentValues.put("SearchKey", ((TextView) view.findViewById(R.id.poi_name)).getText().toString());
+                contentValues.put("Description", ((TextView) view.findViewById(R.id.poi_addr)).getText().toString());
+                contentValues.put("IsLocate", 1);
+                contentValues.put("BD09Longitude", lng);
+                contentValues.put("BD09Latitude", lat);
+                String wgsLatLngStr[] = latLngInfo.split("&");
+                contentValues.put("WGS84Longitude", wgsLatLngStr[0]);
+                contentValues.put("WGS84Latitude", wgsLatLngStr[1]);
+                contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
 
-
+                if (!insertHistorySearchTable(searchHistoryDB, SearchDBHelper.TABLE_NAME, contentValues)) {
+                    Log.e("DATABASE", "insertHistorySearchTable[SearchHistory] error");
+                    log.error("DATABASE: insertHistorySearchTable[SearchHistory] error");
+                } else {
+                    Log.d("DATABASE", "insertHistorySearchTable[SearchHistory] success");
+                    log.debug("DATABASE: insertHistorySearchTable[SearchHistory] success");
+                }
                 mLinearLayout.setVisibility(View.INVISIBLE);
                 searchItem.collapseActionView();
             }
@@ -491,7 +506,121 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     private void setHistorySearchClickListener() {
-        //TODO
+        historySearchList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String searchDescription = ((TextView) view.findViewById(R.id.search_description)).getText().toString();
+                String searchKey = ((TextView) view.findViewById(R.id.search_key)).getText().toString();
+                String searchIsLoc = ((TextView) view.findViewById(R.id.search_isLoc)).getText().toString();
+                //如果是定位搜索
+                if (searchIsLoc.equals("1")) {
+                    String lng = ((TextView) view.findViewById(R.id.search_longitude)).getText().toString();
+                    String lat = ((TextView) view.findViewById(R.id.search_latitude)).getText().toString();
+//                    DisplayToast("lng is " + lng + "lat is " + lat);
+                    currentPt = new LatLng(Double.valueOf(lat), Double.valueOf(lng));
+                    MapStatusUpdate mapstatusupdate = MapStatusUpdateFactory.newLatLng(currentPt);
+                    //对地图的中心点进行更新
+                    mBaiduMap.setMapStatus(mapstatusupdate);
+                    updateMapState();
+                    transformCoordinate(currentPt);
+                    //设置列表不可见
+                    mHistoryLinearLayout.setVisibility(View.INVISIBLE);
+                    searchItem.collapseActionView();
+                    //更新表
+                    ContentValues contentValues = new ContentValues();
+                    contentValues.put("SearchKey", searchKey);
+                    contentValues.put("Description", searchDescription);
+                    contentValues.put("IsLocate", 1);
+                    contentValues.put("BD09Longitude", lng);
+                    contentValues.put("BD09Latitude", lat);
+                    String wgsLatLngStr[] = latLngInfo.split("&");
+                    contentValues.put("WGS84Longitude", wgsLatLngStr[0]);
+                    contentValues.put("WGS84Latitude", wgsLatLngStr[1]);
+                    contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
+                    if (!insertHistorySearchTable(searchHistoryDB, SearchDBHelper.TABLE_NAME, contentValues)) {
+                        Log.e("DATABASE", "insertHistorySearchTable[SearchHistory] error");
+                        log.error("DATABASE: insertHistorySearchTable[SearchHistory] error");
+                    } else {
+                        Log.d("DATABASE", "insertHistorySearchTable[SearchHistory] success");
+                        log.debug("DATABASE: insertHistorySearchTable[SearchHistory] success");
+                    }
+                } else if (searchIsLoc.equals("0")) {
+                    try {
+                        isSubmit = true;
+                        mSuggestionSearch.requestSuggestion((new SuggestionSearchOption())
+                                .keyword(searchKey)
+                                .city(mCurrentCity)
+                        );
+                        mBaiduMap.clear();
+                        mHistoryLinearLayout.setVisibility(View.INVISIBLE);
+                        searchItem.collapseActionView();
+
+                        //更新表
+                        //搜索历史 插表参数
+                        ContentValues contentValues = new ContentValues();
+                        contentValues.put("SearchKey", searchKey);
+                        contentValues.put("Description", "搜索...");
+                        contentValues.put("IsLocate", 0);
+                        contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
+                        if (!insertHistorySearchTable(searchHistoryDB, SearchDBHelper.TABLE_NAME, contentValues)) {
+                            Log.e("DATABASE", "insertHistorySearchTable[SearchHistory] error");
+                            log.error("DATABASE: insertHistorySearchTable[SearchHistory] error");
+                        } else {
+                            Log.d("DATABASE", "insertHistorySearchTable[SearchHistory] success");
+                            log.debug("DATABASE: insertHistorySearchTable[SearchHistory] success");
+                        }
+                    } catch (Exception e) {
+                        displayToast("搜索失败，请检查网络连接");
+                        Log.d("HTTP", "搜索失败，请检查网络连接");
+                        log.debug("搜索失败，请检查网络连接");
+                        e.printStackTrace();
+                    }
+                } else {
+                    Log.d("HTTP", "illegal parameter");
+                    log.debug("搜索失败，参数非法");
+                }
+
+            }
+        });
+        historySearchList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, final View view, int position, long id) {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Warning")//这里是表头的内容
+                        .setMessage("确定要删除该项搜索记录吗?")//这里是中间显示的具体信息
+                        .setPositiveButton("确定",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        String searchKey = ((TextView) view.findViewById(R.id.search_key)).getText().toString();
+                                        try {
+                                            searchHistoryDB.delete(SearchDBHelper.TABLE_NAME, "SearchKey = ?", new String[]{searchKey});
+                                            //删除成功
+                                            //展示搜索历史
+                                            List<Map<String, Object>> data = getSearchHistory();
+                                            if (data.size() > 0) {
+                                                simpleAdapter = new SimpleAdapter(
+                                                        MainActivity.this,
+                                                        data,
+                                                        R.layout.history_search_item,
+                                                        new String[]{"search_key", "search_description", "search_timestamp", "search_isLoc", "search_longitude", "search_latitude"},// 与下面数组元素要一一对应
+                                                        new int[]{R.id.search_key, R.id.search_description, R.id.search_timestamp, R.id.search_isLoc, R.id.search_longitude, R.id.search_latitude});
+                                                historySearchList.setAdapter(simpleAdapter);
+                                                mHistoryLinearLayout.setVisibility(View.VISIBLE);
+                                            }
+                                        } catch (Exception e) {
+                                            Log.e("DATABASE", "delete error");
+                                            log.error("DATABASE: delete error");
+                                            displayToast("DELETE ERROR[UNKNOWN]");
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                })
+                        .setNegativeButton("取消", null)
+                        .show();
+                return true;
+            }
+        });
     }
 
     private void setSugSearchListener() {
@@ -605,7 +734,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
     private void startMockService() {
         Intent intent = new Intent(this, MockGpsService.class);
-        intent.putExtra("key", currentPt);
+        intent.putExtra("key", latLngInfo);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent);
             Log.d(TAG, "startForegroundService: MOCK_GPS");
