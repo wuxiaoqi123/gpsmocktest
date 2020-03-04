@@ -82,6 +82,7 @@ import com.welcome.gpsmocktest.db.SearchDBHelper;
 import com.welcome.gpsmocktest.log4j.LogUtil;
 import com.welcome.gpsmocktest.map.PoiOverlay;
 import com.welcome.gpsmocktest.service.MockGpsService;
+import com.welcome.gpsmocktest.utils.Utils;
 
 import org.apache.log4j.Logger;
 
@@ -295,7 +296,31 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     private void transformCoordinate(LatLng currentPt) {
-        //TODO
+//        String coords = currentPt.longitude + "," + currentPt.latitude;
+//        String ak = "HSwbpNRRE7Ykvky1G4ustFX02QKBL7t8";
+//        String mcode = "6E:62:93:45:22:FD:4E:8C:B2:42:47:1D:EC:55:4E:55:2A:FF:A1:1A;com.example.mockgps";
+//        HttpClient.getInstance().getRetrofitClient().build(Api.class)
+//                .transformCoordinate(coords, ak, mcode)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe(new RxObserver<Object>() {
+//                    @Override
+//                    public void onFail(String errCode, String errMsg) {
+//
+//                    }
+//
+//                    @Override
+//                    public void onSuccess(Object o) {
+//
+//                    }
+//                });
+//        CoordinateConverter converter  = new CoordinateConverter()
+//                .from(CoordinateConverter.CoordType.GPS)
+//                .coord(sourceLatLng);
+        Log.i("wxq", "转换前->" + currentPt.toString());
+        double latLng[] = Utils.bd2wgs(Double.valueOf(currentPt.longitude), Double.valueOf(currentPt.latitude));
+        latLngInfo = latLng[0] + "&" + latLng[1];
+        Log.i("wxq", "转换后latLngInfo->" + latLngInfo);
     }
 
     private void showGpsDialog() {
@@ -718,16 +743,18 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         fabStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, MockGpsService.class);
-                stopService(intent);
-                Snackbar.make(v, "位置模拟服务终止", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-                isMockServiceStart = false;
-                fab.show();
-                fabStop.hide();
-                mLocClient.stop();
-                mLocClient.start();
-                groupLoc.check(R.id.normalloc);
+                if (isMockServiceStart) {
+                    Intent intent = new Intent(MainActivity.this, MockGpsService.class);
+                    stopService(intent);
+                    Snackbar.make(v, "位置模拟服务终止", Snackbar.LENGTH_LONG)
+                            .setAction("Action", null).show();
+                    isMockServiceStart = false;
+                    fab.show();
+                    fabStop.hide();
+                    mLocClient.stop();
+                    mLocClient.start();
+                    groupLoc.check(R.id.normalloc);
+                }
             }
         });
     }
@@ -747,7 +774,14 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     private void updatePositionInfo() {
-        //TODO
+        ContentValues contentValues = new ContentValues();
+        contentValues.put("Location", "NULL");
+        String latLngStr[] = latLngInfo.split("&");
+        contentValues.put("WGS84Longitude", latLngStr[0]);
+        contentValues.put("WGS84Latitude", latLngStr[1]);
+        contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
+        contentValues.put("BD09Longitude", "" + currentPt.longitude);
+        contentValues.put("BD09Latitude", "" + currentPt.latitude);
     }
 
     private void updateMapState() {

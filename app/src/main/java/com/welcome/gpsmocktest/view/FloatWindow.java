@@ -11,8 +11,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 
-import com.welcome.gpsmocktest.activity.MainActivity;
 import com.welcome.gpsmocktest.R;
+import com.welcome.gpsmocktest.activity.MainActivity;
 
 import java.lang.reflect.Field;
 
@@ -104,7 +104,7 @@ public class FloatWindow implements View.OnTouchListener {
     }
 
     public void showFloatWindow() {
-        if (mFloatLayout.getParent() != null) {
+        if (mFloatLayout.getParent() == null) {
             DisplayMetrics metrics = new DisplayMetrics();
             mWindowManager.getDefaultDisplay().getMetrics(metrics);
             mWindowParams.x = metrics.widthPixels;
