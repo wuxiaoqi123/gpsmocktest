@@ -782,6 +782,27 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         contentValues.put("TimeStamp", System.currentTimeMillis() / 1000);
         contentValues.put("BD09Longitude", "" + currentPt.longitude);
         contentValues.put("BD09Latitude", "" + currentPt.latitude);
+        if (!insertHistoryLocTable(locHistoryDB, HistoryDBHelper.TABLE_NAME, contentValues)) {
+            Log.e("DATABASE", "insertHistoryLocTable[HistoryLocation] error");
+            log.error("DATABASE: insertHistoryLocTable[HistoryLocation] error");
+        } else {
+            Log.d("DATABASE", "insertHistoryLocTable[HistoryLocation] success");
+            log.debug("DATABASE: insertHistoryLocTable[HistoryLocation] success");
+        }
+    }
+
+    //sqlite 操作 插表HistoryLocation
+    private boolean insertHistoryLocTable(SQLiteDatabase sqLiteDatabase, String tableName, ContentValues contentValues) {
+        boolean insertRet = true;
+        try {
+            sqLiteDatabase.insert(tableName, null, contentValues);
+        } catch (Exception e) {
+            Log.e("DATABASE", "insert error");
+            log.error("DATABASE: insert error");
+            insertRet = false;
+            e.printStackTrace();
+        }
+        return insertRet;
     }
 
     private void updateMapState() {
